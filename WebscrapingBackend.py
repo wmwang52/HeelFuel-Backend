@@ -9,6 +9,14 @@ import os
 import firebase_admin
 from firebase_admin import credentials
 import requests
+#Complete scraping code
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+import time
+import threading
+
 
 class foodItem:
     def __init__(self, name, servingSize, calories, fatCalories, totalFat, saturatedFat, transFat, cholesterol, sodium,
@@ -31,8 +39,46 @@ class foodItem:
         self.ingredients = ingredients
 
     def __str__(self):
-        return f"{self.name}\n{self.servingSize}\n{self.calories}\n{self.allergens}\n{self.ingredients}"
+        return f"{self.name}\n{self.servingSize}\n{self.calories}\n{self.allergens}\n{self.ingredients}\n"
 
+#This method should get all the food names from the given HTML file, need to add error handleing
+def allFoodItemNames(pageLink):
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.get(f"{pageLink}")
+
+    diningHallPageData = driver.find_elements(By.CLASS_NAME, "menu-station")
+    finalFoodList = []
+    mealFoodList = []
+    for MenuStation in diningHallPageData:
+        MenuStation = MenuStation.get_attribute("innerHTML").split("tabindex=\"0\">")
+        newList = []
+
+        for i in MenuStation:
+            if "</a>\n" in i:
+
+                i = i.split("</a>\n")
+
+                if "&amp" in i[0]:
+                    i[0] = i[0].replace("&amp;", "&")
+                    print(i[0])
+
+                newList.append(i[0].strip())
+
+
+        if "Strawberry Kiwi Juice" in newList:
+            mealFoodList.append(newList)
+            finalFoodList.append(mealFoodList)
+            mealFoodList = []
+        else:
+            mealFoodList.append(newList)
+    driver.quit()
+
+    for i in finalFoodList:
+        print(i)
+
+    return finalFoodList
 
 # This method returns all the raw data given, and cleans the ingredient data and allergen data.
 def getData(foodItem, webpageLink):
@@ -50,6 +96,7 @@ def getData(foodItem, webpageLink):
     try:
         driver.find_element(By.LINK_TEXT, f"{foodItem}").click()
     except:
+        print(foodItem)
         exit("Food Item is INVALID")
 
     time.sleep(1)
@@ -127,7 +174,3 @@ def writeToFile(textToWrite):
         for i in textToWrite:
             file.write(i + "\n")
         file.close()
-
-#
-# userInput = input("What would you like to find the calories of? ")
-# writeToFile((cleanData(getData(userInput, "https://dining.unc.edu/locations/chase/?date=2023-04-11"), userInput)))
