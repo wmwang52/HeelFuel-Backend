@@ -5,9 +5,11 @@ from bs4 import BeautifulSoup
 import time
 import threading
 import json
+import os
 import firebase_admin
 from firebase_admin import credentials
 import requests
+from datetime import datetime
 
 
 # This method is meant to write all the data given in a list to a file. Will not necessarily need after.
@@ -53,7 +55,6 @@ def allFoodItemNames(pageLink):
 
     html = driver.page_source
     time.sleep(1)
-
     soup = BeautifulSoup(html, 'html.parser')
     menu_stations = soup.find_all('div', class_='menu-station')
     totalMealPeriodList = []
@@ -63,14 +64,17 @@ def allFoodItemNames(pageLink):
         items = station.find_all('li')
         for item in items:
             food_name = item.find('a').text.strip()
+            print(food_name)
             foodList.append(food_name)
         stationFoodList.append(foodList)
+
         if "Strawberry Kiwi Juice" in foodList:
             totalMealPeriodList.append(stationFoodList)
             stationFoodList = []
             foodList = []
         else:
             foodList = []
+
     driver.quit()
     return totalMealPeriodList
 
@@ -144,18 +148,21 @@ def getData(foodItem, webpageLink, index):
     return foodItemNew
 
 
-def webScrape():
+def webScrape(restaurant, mealSections):
+    queryRestaurant = restaurant.lower().replace(" ", "-")
+    date = str(datetime.today().strftime('%Y-%m-%d'))
+
+    pageLink = f"https://dining.unc.edu/locations/{queryRestaurant}/?date={date}"
+    foodList = allFoodItemNames(pageLink)
+
     FINALMEALLIST = []
     foodListFinal = []
 
     def finalFunction(item, link, index):
         foodListFinal.append(getData(item, f"{link}", index))
 
-    pageLink = "https://dining.unc.edu/locations/top-of-lenoir/?date=2023-04-13"
+    for i in range(0, mealSections):
 
-    foodList = allFoodItemNames(pageLink)
-
-    for i in range(0, 4):
         threads = []
 
         for meal in foodList[i]:
@@ -185,8 +192,9 @@ def webScrape():
         '/Users/williamwang/Downloads/foodforthought-741c2-firebase-adminsdk-rqj46-4d105d5f9d.json')
     firebase_admin.initialize_app(cred)
 
-    response = requests.put("https://foodforthought-741c2-default-rtdb.firebaseio.com/lenoirMenu.json", json=data)
+    response = requests.put(f"https://foodforthought-741c2-default-rtdb.firebaseio.com/{restaurant.title()}Menu.json",
+                            json=data)
     print(response.status_code)
 
 
-webScrape()
+webScrape("Chase",6)
