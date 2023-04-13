@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 import time
 import threading
 import json
-import os
 import firebase_admin
 from firebase_admin import credentials
 import requests
