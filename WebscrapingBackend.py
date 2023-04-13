@@ -40,3 +40,37 @@ class Food:
 
     def toString(self):
         return f"{self.name}\n{self.servingSize}\n{self.calories}\n{self.allergens}\n{self.ingredients}\n\n\n"
+
+
+# This method should get all the food names from the given HTML file, need to add error handling
+def allFoodItemNames(pageLink):
+    # Creates the options for the newly launched Chrome browser to be in the background.
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+
+    # Creates the web driver
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.get(f"{pageLink}")
+
+    html = driver.page_source
+    time.sleep(1)
+
+    soup = BeautifulSoup(html, 'html.parser')
+    menu_stations = soup.find_all('div', class_='menu-station')
+    totalMealPeriodList = []
+    stationFoodList = []
+    foodList = []
+    for station in menu_stations:
+        items = station.find_all('li')
+        for item in items:
+            food_name = item.find('a').text.strip()
+            foodList.append(food_name)
+        stationFoodList.append(foodList)
+        if "Strawberry Kiwi Juice" in foodList:
+            totalMealPeriodList.append(stationFoodList)
+            stationFoodList = []
+            foodList = []
+        else:
+            foodList = []
+    driver.quit()
+    return totalMealPeriodList
