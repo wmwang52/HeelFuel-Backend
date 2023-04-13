@@ -9,14 +9,8 @@ import os
 import firebase_admin
 from firebase_admin import credentials
 import requests
-#Complete scraping code
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-import time
-import threading
-
+#CURRENT FINAL WORKING ITERATION OF THE BACKEND
 
 class foodItem:
     def __init__(self, name, servingSize, calories, fatCalories, totalFat, saturatedFat, transFat, cholesterol, sodium,
@@ -38,8 +32,8 @@ class foodItem:
         self.allergens = allergens
         self.ingredients = ingredients
 
-    def __str__(self):
-        return f"{self.name}\n{self.servingSize}\n{self.calories}\n{self.allergens}\n{self.ingredients}\n"
+    def toString(self):
+        return f"{self.name}\n{self.servingSize}\n{self.calories}\n{self.allergens}\n{self.ingredients}\n\n\n"
 
 #This method should get all the food names from the given HTML file, need to add error handleing
 def allFoodItemNames(pageLink):
@@ -47,26 +41,18 @@ def allFoodItemNames(pageLink):
     chrome_options.add_argument("--headless")
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(f"{pageLink}")
-
     diningHallPageData = driver.find_elements(By.CLASS_NAME, "menu-station")
     finalFoodList = []
     mealFoodList = []
     for MenuStation in diningHallPageData:
         MenuStation = MenuStation.get_attribute("innerHTML").split("tabindex=\"0\">")
         newList = []
-
         for i in MenuStation:
             if "</a>\n" in i:
-
                 i = i.split("</a>\n")
-
                 if "&amp" in i[0]:
                     i[0] = i[0].replace("&amp;", "&")
-                    print(i[0])
-
                 newList.append(i[0].strip())
-
-
         if "Strawberry Kiwi Juice" in newList:
             mealFoodList.append(newList)
             finalFoodList.append(mealFoodList)
@@ -74,14 +60,10 @@ def allFoodItemNames(pageLink):
         else:
             mealFoodList.append(newList)
     driver.quit()
-
-    for i in finalFoodList:
-        print(i)
-
     return finalFoodList
 
 # This method returns all the raw data given, and cleans the ingredient data and allergen data.
-def getData(foodItem, webpageLink):
+def getData(foodItem, webpageLink,index):
     fullData = []
     chrome_options = Options()
     chrome_options.add_argument("--headless")
@@ -90,20 +72,25 @@ def getData(foodItem, webpageLink):
     try:
 
         driver.get(f"{webpageLink}")
+        driver.find_elements(By.CLASS_NAME, "c-tabs-nav__link")[index].click()
     except:
         exit("LINK IS INVALID")
-
     try:
         driver.find_element(By.LINK_TEXT, f"{foodItem}").click()
     except:
-        print(foodItem)
+        print(foodItem.toString())
         exit("Food Item is INVALID")
 
     time.sleep(1)
 
-    NutritionData = driver.find_element(By.CLASS_NAME, "nutrition-facts-table").get_attribute("innerHTML")
+    try:
+        NutritionData = driver.find_element(By.CLASS_NAME, "nutrition-facts-table").get_attribute("innerHTML")
 
-    extraRawData = driver.find_elements(By.CSS_SELECTOR, "p")
+        extraRawData = driver.find_elements(By.CSS_SELECTOR, "p")
+    except:
+        exit(f"{foodItem}")
+
+
 
     if "Ingredients" in extraRawData[0].get_attribute("innerHTML"):
         ingredients = extraRawData[0].get_attribute("innerHTML")
@@ -125,6 +112,8 @@ def getData(foodItem, webpageLink):
     driver.quit()
 
     return fullData
+
+
 
 
 # This method JUST cleans the raw data, and appends the allergens list and raw data list.
@@ -164,13 +153,54 @@ def cleanData(rawData, name):
                                nutritionList[5], nutritionList[6], nutritionList[7], nutritionList[8], nutritionList[9],
                                nutritionList[10], nutritionList[11], nutritionList[12])
 
-    print(newFoodItem)
-    return nutritionList
-
+    print(newFoodItem.toString())
+    return newFoodItem
+foodListFinal = []
 
 # This method is meant to write all the data given in a list to a file. Will not necessarily need after.
 def writeToFile(textToWrite):
     with open("/Users/williamwang/Desktop/Test.txt", "a") as file:
-        for i in textToWrite:
-            file.write(i + "\n")
+
+        file.write(textToWrite.toString())
         file.close()
+
+def finalFunction(item, link, index):
+    foodListFinal.append(cleanData(getData(item, f"{link}", index), item))
+
+FINALMEALLIST = []
+for i in range(0,6):
+    pageLink = "https://dining.unc.edu/locations/chase/?date=2023-04-12"
+
+    foodList = allFoodItemNames(pageLink)[i]
+
+    threads = []
+
+    for meal in foodList:
+        print(meal)
+        for food in meal:
+            thread = threading.Thread(target=finalFunction, args=(food, pageLink,i))
+            print(thread)
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads to complete
+        for thread in threads:
+                thread.join()
+
+        for thread in threads:
+            if thread.is_alive():
+                print("Thread is still running, stopping it now.")
+                thread.stop()
+    FINALMEALLIST.append(foodListFinal)
+    foodListFinal = []
+
+json_data = json.dumps([[item.__dict__ for item in inner_list] for inner_list in FINALMEALLIST])
+
+data = json.loads(json_data)
+
+desktop_path = os.path.expanduser("~/Desktop")
+
+output_file = os.path.join(desktop_path, "output.json")
+
+with open(output_file, "w") as f:
+    json.dump(data, f)
