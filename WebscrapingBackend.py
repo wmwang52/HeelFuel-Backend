@@ -143,3 +143,51 @@ def getData(foodItem, webpageLink, index):
                            fullData[13],
                            fullData[14])
     return foodItemNew
+
+
+def webScrape():
+    FINALMEALLIST = []
+    foodListFinal = []
+
+    def finalFunction(item, link, index):
+        foodListFinal.append(getData(item, f"{link}", index))
+
+    pageLink = "https://dining.unc.edu/locations/top-of-lenoir/?date=2023-04-13"
+
+    foodList = allFoodItemNames(pageLink)
+
+    for i in range(0, 4):
+        threads = []
+
+        for meal in foodList[i]:
+            for food in meal:
+                thread = threading.Thread(target=finalFunction, args=(food, pageLink, i))
+                print(thread)
+                threads.append(thread)
+                thread.start()
+
+            # Wait for all threads to complete
+            for thread in threads:
+                thread.join()
+
+            for thread in threads:
+                if thread.is_alive():
+                    print("Thread is still running, stopping it now.")
+                    thread.stop()
+
+        FINALMEALLIST.append(foodListFinal)
+        foodListFinal = []
+
+    json_data = json.dumps([[item.__dict__ for item in inner_list] for inner_list in FINALMEALLIST])
+
+    data = json.loads(json_data)
+
+    cred = credentials.Certificate(
+        '/Users/williamwang/Downloads/foodforthought-741c2-firebase-adminsdk-rqj46-4d105d5f9d.json')
+    firebase_admin.initialize_app(cred)
+
+    response = requests.put("https://foodforthought-741c2-default-rtdb.firebaseio.com/lenoirMenu.json", json=data)
+    print(response.status_code)
+
+
+webScrape()
