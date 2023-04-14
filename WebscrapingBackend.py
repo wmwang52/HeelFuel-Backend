@@ -10,7 +10,7 @@ import firebase_admin
 from firebase_admin import credentials
 import requests
 from datetime import datetime
-
+import uuid
 
 # This method is meant to write all the data given in a list to a file. Will not necessarily need after.
 def writeToFile(textToWrite):
@@ -21,8 +21,8 @@ def writeToFile(textToWrite):
 
 class Food:
     def __init__(self, name, servingSize, calories, fatCalories, totalFat, saturatedFat, transFat, cholesterol, sodium,
-                 totalCarbohydrate, dietaryFiber, sugars, protein, ingredients,
-                 allergens="No common allergens. Look at ingredients List."):
+                 totalCarbohydrate, dietaryFiber, sugars, protein, ingredients,id,
+                 allergens="No common allergens. Look at ingredients List.", ):
         self.name = name
         self.servingSize = servingSize
         self.calories = calories
@@ -38,6 +38,7 @@ class Food:
         self.protein = protein
         self.allergens = allergens
         self.ingredients = ingredients
+        self.id = id
 
     def toString(self):
         return f"{self.name}\n{self.servingSize}\n{self.calories}\n{self.allergens}\n{self.ingredients}\n\n\n"
@@ -139,11 +140,11 @@ def getData(foodItem, webpageLink, index):
 
         foodItemNew = Food(fullData[0], fullData[1], fullData[2], fullData[3], fullData[4], fullData[5], fullData[6],
                            fullData[7], fullData[8], fullData[9], fullData[10], fullData[11], fullData[12],
-                           fullData[13])
+                           fullData[13], id=str(uuid.uuid4()))
     else:
         foodItemNew = Food(fullData[0], fullData[1], fullData[2], fullData[3], fullData[4], fullData[5], fullData[6],
                            fullData[7], fullData[8], fullData[9], fullData[10], fullData[11], fullData[12],
-                           fullData[13],
+                           fullData[13],str(uuid.uuid4()),
                            fullData[14])
     return foodItemNew
 
